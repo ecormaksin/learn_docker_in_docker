@@ -1,0 +1,59 @@
+FROM docker.io/library/debian:bookworm
+
+RUN apt-get -qq update >/dev/null && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y \
+        sudo \
+        locales >/dev/null && \
+    echo "ja_JP.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen ja_JP.UTF-8
+
+ENV TARGET_USER=testuser
+
+RUN adduser --gecos "" --disabled-login "${TARGET_USER}"
+RUN echo "${TARGET_USER}:${TARGET_USER}" | chpasswd
+RUN SUDOERS_FILE="/etc/sudoers.d/${TARGET_USER}" && \
+    echo "${TARGET_USER} ALL=(ALL) NOPASSWD: ALL" > "${SUDOERS_FILE}" && \
+    chmod 440 "${SUDOERS_FILE}"
+
+RUN for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg; done
+RUN apt-get -qq update >/dev/null
+RUN DEBIAN_FRONTEND=noninteractive apt-get -qq install ca-certificates curl gnupg >/dev/null
+RUN install -m 0755 -d /etc/apt/keyrings
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+RUN chmod a+r /etc/apt/keyrings/docker.gpg
+
+# Add the repository to Apt sources:
+RUN echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null
+RUN apt-get -qq update >/dev/null
+RUN DEBIAN_FRONTEND=noninteractive apt-get -qq install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null
+
+RUN cat /etc/group | grep docker >/dev/null; if [ $? -ne 0 ]; then groupadd docker; fi
+
+RUN usermod -aG docker $TARGET_USER
+RUN newgrp docker
+
+RUN DOCKER_USER_DIR="/home/${TARGET_USER}/.docker"; if [ -d "${DOCKER_USER_DIR}" ]; then chown "$TARGET_USER":"$TARGET_USER" "${DOCKER_USER_DIR}" -R;chmod g+rwx "${DOCKER_USER_DIR}" -R; fi
+
+RUN apt-get -qq update >/dev/null
+RUN DEBIAN_FRONTEND=noninteractive apt-get -qq install \
+    curl \
+    dumb-init \
+    unzip >/dev/null
+
+USER "${TARGET_USER}"
+
+WORKDIR "/home/${TARGET_USER}"
+
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+RUN unzip awscliv2.zip
+RUN sudo ./aws/install
+
+RUN aws configure set aws_access_key_id "test" --profile localstack && aws configure set aws_secret_access_key "test" --profile localstack
+
+ENTRYPOINT [ "/usr/bin/dumb-init", "--", "tail", "-f", "/dev/null" ]
+
+ENV LANG ja_JP.UTF-8
+ENV LC_ALL ja_JP.UTF-8

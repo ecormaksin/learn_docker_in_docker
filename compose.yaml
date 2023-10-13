@@ -1,0 +1,10 @@
+services:
+  client:
+    build: 
+      context: ./client
+      dockerfile: Containerfile
+    environment:
+      - TZ=Asia/Tokyo
+    volumes:
+      - /var/run/docker.sock:z
+      - ./client/containers:/containers
