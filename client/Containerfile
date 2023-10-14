@@ -2,8 +2,15 @@ FROM docker.io/library/debian:bookworm
 
 RUN apt-get -qq update >/dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get -qq install -y \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        dumb-init \
+        iptables \
+        locales \
+        lxc \
         sudo \
-        locales >/dev/null && \
+        unzip >/dev/null && \
     echo "ja_JP.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen ja_JP.UTF-8
 
@@ -30,18 +37,26 @@ RUN echo \
 RUN apt-get -qq update >/dev/null
 RUN DEBIAN_FRONTEND=noninteractive apt-get -qq install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null
 
-RUN cat /etc/group | grep docker >/dev/null; if [ $? -ne 0 ]; then groupadd docker; fi
+RUN cat /etc/group | grep docker >/dev/null; \
+    if [ $? -ne 0 ]; then \
+        groupadd docker; \
+    fi
+
+RUN curl -sfL https://raw.githubusercontent.com/moby/moby/master/hack/dind -o /usr/local/bin/dind && \
+    chmod +x /usr/local/bin/dind
 
 RUN usermod -aG docker $TARGET_USER
 RUN newgrp docker
 
-RUN DOCKER_USER_DIR="/home/${TARGET_USER}/.docker"; if [ -d "${DOCKER_USER_DIR}" ]; then chown "$TARGET_USER":"$TARGET_USER" "${DOCKER_USER_DIR}" -R;chmod g+rwx "${DOCKER_USER_DIR}" -R; fi
+RUN DOCKER_USER_DIR="/home/${TARGET_USER}/.docker"; \
+    if [ -d "${DOCKER_USER_DIR}" ]; then \
+        chown "$TARGET_USER":"$TARGET_USER" "${DOCKER_USER_DIR}" -R; \
+        chmod g+rwx "${DOCKER_USER_DIR}" -R; \
+    fi
 
-RUN apt-get -qq update >/dev/null
-RUN DEBIAN_FRONTEND=noninteractive apt-get -qq install \
-    curl \
-    dumb-init \
-    unzip >/dev/null
+VOLUME /var/lib/docker
+
+ENTRYPOINT [ "/usr/bin/dumb-init", "--", "tail", "-f", "/dev/null" ]
 
 USER "${TARGET_USER}"
 
@@ -52,8 +67,6 @@ RUN unzip awscliv2.zip
 RUN sudo ./aws/install
 
 RUN aws configure set aws_access_key_id "test" --profile localstack && aws configure set aws_secret_access_key "test" --profile localstack
-
-ENTRYPOINT [ "/usr/bin/dumb-init", "--", "tail", "-f", "/dev/null" ]
 
 ENV LANG ja_JP.UTF-8
 ENV LC_ALL ja_JP.UTF-8

@@ -1,0 +1,13 @@
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Containerfile
+    environment:
+      - TZ=Asia/Tokyo
+    # comment out when use DinD
+    privileged: true
+    volumes:
+      # comment out when use DooD
+      # - /var/run/docker.sock:/var/run/docker.sock
+      - ./containers:/containers
