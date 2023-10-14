@@ -16,7 +16,7 @@ RUN apt-get -qq update >/dev/null && \
 
 ENV TARGET_USER=testuser
 
-RUN adduser --gecos "" --disabled-login "${TARGET_USER}"
+RUN adduser -q --gecos "" --disabled-login "${TARGET_USER}"
 RUN echo "${TARGET_USER}:${TARGET_USER}" | chpasswd
 RUN SUDOERS_FILE="/etc/sudoers.d/${TARGET_USER}" && \
     echo "${TARGET_USER} ALL=(ALL) NOPASSWD: ALL" > "${SUDOERS_FILE}" && \

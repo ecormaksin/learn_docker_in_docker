@@ -5,7 +5,6 @@ services:
       dockerfile: Containerfile
     environment:
       - TZ=Asia/Tokyo
-    # comment out when use DinD
     privileged: true
     volumes:
       # comment out when use DooD
