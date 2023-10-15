@@ -5,8 +5,13 @@ services:
       dockerfile: Containerfile
     environment:
       - TZ=Asia/Tokyo
-    privileged: true
+    # privileged: true
     volumes:
       # comment out when use DooD
-      # - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./containers:/containers
+    networks:
+      nt-docker-dind:
+
+networks:
+  nt-docker-dind:
